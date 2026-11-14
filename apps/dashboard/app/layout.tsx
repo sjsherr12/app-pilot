@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { TopNav } from "@/components/top-nav";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -31,10 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       style={{ colorScheme: "dark" }}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <TooltipProvider delayDuration={200}>
-          <TopNav />
-          <main className="flex min-h-0 flex-1 flex-col">{children}</main>
-        </TooltipProvider>
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
       </body>
     </html>
   );

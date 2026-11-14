@@ -119,9 +119,14 @@ per-role overrides such as `APPPILOT_EXPLORER_MODEL` and effort via `APPPILOT_SU
 
 The dashboard follows the AppPilot brand system: Geist Sans and Geist Mono, the Ink / Elevated / Border /
 Chalk / Slate palette with Signal Green as the single accent, 8px cards, 6px buttons, 1px borders, and
-150 to 250 ms transitions. Tokens live in `apps/dashboard/app/globals.css`; the landing page is `/` and the
-console is `/runs`. Logo files are placeholders: see `apps/dashboard/public/brand/README.md` for exactly
-which files to replace and at what size.
+150 to 250 ms transitions. Tokens and the landing-page motion styles live in `apps/dashboard/app/globals.css`.
+
+The app is split into two Next.js route groups: `app/(marketing)` is the public site at `/` (marketing nav,
+animated replay of a real run, stats, how-it-works, evidence, regression-test demo, footer) and
+`app/(console)` is the product console at `/runs`. The replay in the hero and the evidence section use real
+screenshots from rehearsal run `run_6b4c9ec9`, copied to `apps/dashboard/public/landing/shots`. Logo files
+are in `apps/dashboard/public/brand` (see its README for sizes); `app/icon.svg` is the favicon and must be
+replaced alongside `app-icon.svg`.
 
 ## Continuous integration
 
