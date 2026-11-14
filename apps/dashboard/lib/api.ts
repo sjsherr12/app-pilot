@@ -76,6 +76,20 @@ export interface TestCase {
   code: string;
   last_result: TestResult | null;
   created_at: string;
+  /** Set by POST /api/tests/{id}/export: the branch the spec was pushed to and the pull request opened for it. */
+  branch?: string | null;
+  pr_url?: string | null;
+  exported_at?: string | null;
+}
+
+/** Response of POST /api/tests/{id}/export. `pr_url` is null when the branch was pushed but no PR could be opened. */
+export interface ExportResult {
+  branch: string;
+  pr_url: string | null;
+  commit: string;
+  files: string[];
+  message: string;
+  test?: TestCase;
 }
 
 export type AgentName = "supervisor" | "explorer" | "verifier" | "test_writer" | "system";
@@ -155,6 +169,12 @@ export interface FindingPayload {
 export interface TestPayload {
   test: TestCase;
 }
+export interface TestExportedPayload extends TestPayload {
+  branch?: string;
+  pr_url?: string | null;
+  commit?: string;
+  message?: string;
+}
 export interface ReportFinalPayload {
   report_md: string;
 }
@@ -183,15 +203,22 @@ export const API_BASE = MOCK
   ? "/api/mock"
   : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 
+/**
+ * Absolute URL for an API path such as /api/runs or /artifacts/<run>/shots/x.png.
+ * In mock mode the real /api/... routes live under /api/mock/... and artifacts
+ * are served from /api/mock/artifacts/....
+ */
 export function apiUrl(path: string): string {
-  return `${API_BASE}${path}`;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (MOCK) return `/api/mock${p.replace(/^\/api(?=\/)/, "")}`;
+  return `${API_BASE}${p}`;
 }
 
 /** Artifact paths (/artifacts/<run>/shots/s0012.png) are relative to the API base. */
 export function artifactUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+  return apiUrl(path);
 }
 
 export function eventsUrl(runId: string): string {
@@ -260,6 +287,11 @@ export function stopRun(id: string): Promise<Run> {
 
 export function runTest(id: string): Promise<TestCase> {
   return request<TestCase>(`/api/tests/${encodeURIComponent(id)}/run`, { method: "POST" });
+}
+
+/** Push the generated spec to a branch and open a GitHub pull request for it (git + gh run on the API host). */
+export function exportTest(id: string): Promise<ExportResult> {
+  return request<ExportResult>(`/api/tests/${encodeURIComponent(id)}/export`, { method: "POST" });
 }
 
 export const TERMINAL_STATUSES: ReadonlySet<RunStatus> = new Set(["completed", "failed", "stopped"]);

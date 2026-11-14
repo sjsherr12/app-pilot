@@ -88,3 +88,9 @@ export function safeJson(value: unknown): string {
     return String(value);
   }
 }
+
+/** "PR #12" for a GitHub pull request URL, otherwise a generic label. */
+export function prLabel(url: string | null | undefined): string {
+  const m = /\/pull\/(\d+)(?:[/?#]|$)/.exec(url ?? "");
+  return m ? `PR #${m[1]}` : "Pull request";
+}

@@ -70,7 +70,7 @@ export interface FeedItem {
   usage?: LlmUsagePayload;
   finding?: Finding;
   test?: TestCase;
-  change?: "created" | "updated" | "saved" | "result";
+  change?: "created" | "updated" | "saved" | "result" | "exported";
   todos?: Todo[];
   status?: RunStatus;
 }
@@ -194,7 +194,7 @@ function applyEvent(s: RunState, ev: RunEvent): void {
     agent: ev.agent ?? null,
     session: ev.session ?? null,
   };
-  const push = (item: Omit<FeedItem, keyof typeof base>) => {
+  const push = (item: Omit<FeedItem, keyof typeof base> & Partial<Pick<FeedItem, "agent" | "session">>) => {
     s.feed.push({ ...base, ...item });
   };
 
@@ -327,11 +327,17 @@ function applyEvent(s: RunState, ev: RunEvent): void {
       break;
     }
     case "test.saved":
-    case "test.result": {
+    case "test.result":
+    case "test.exported": {
       const p = payload as unknown as TestPayload;
       if (p.test?.id) {
-        s.tests[p.test.id] = p.test;
-        push({ kind: "test", test: p.test, change: ev.type === "test.saved" ? "saved" : "result" });
+        // Exports carry only branch/pr_url; keep a newer result that may have arrived meanwhile.
+        s.tests[p.test.id] = ev.type === "test.exported" ? { ...s.tests[p.test.id], ...p.test } : p.test;
+        push({
+          kind: "test",
+          test: s.tests[p.test.id],
+          change: ev.type === "test.saved" ? "saved" : ev.type === "test.result" ? "result" : "exported",
+        });
       }
       break;
     }
@@ -424,7 +430,10 @@ export interface UseRunEvents extends RunState {
 export function useRunEvents(runId: string | undefined): UseRunEvents {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const statusRef = useRef<RunStatus | null>(null);
-  statusRef.current = state.run?.status ?? null;
+  const currentStatus = state.run?.status ?? null;
+  useEffect(() => {
+    statusRef.current = currentStatus;
+  }, [currentStatus]);
 
   useEffect(() => {
     if (!runId) return;
@@ -493,8 +502,8 @@ export function useRunEvents(runId: string | undefined): UseRunEvents {
         if (es === source) es = null;
         flush();
         if (cancelled) return;
-        if (isTerminal(streamStatus ?? statusRef.current)) {
-          // The server closed the stream after replaying a finished run.
+        if (isTerminal(streamStatus) || isTerminal(statusRef.current)) {
+          // The server closed the stream of a finished (or just stopped) run.
           dispatch({ type: "connection", state: "closed" });
           return;
         }
