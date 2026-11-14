@@ -1,7 +1,7 @@
-# Brand assets (placeholders)
+# Brand assets
 
-Every file here is a geometric stand-in for the real AppPilot mark. Replace the files in place; nothing
-else needs to change.
+The app renders these files directly (`components/brand/logo.tsx`): replace a file and the UI updates,
+no code changes needed. `wordmark-chalk.svg` is the nav lockup; `mark-*.svg` are used standalone.
 
 | File | Used for | Spec |
 |---|---|---|
@@ -14,8 +14,8 @@ else needs to change.
 Also used in the app:
 
 - `app/icon.svg` is a copy of `app-icon.svg`; Next.js serves it as the favicon. Replace both.
-- The nav renders the mark inline from `components/brand/logo.tsx` (`Mark`), so the real path data should also
-  go into that component (keep `fill="currentColor"` so it inherits text color).
+- `Mark` and `Lockup` in `components/brand/logo.tsx` are `<img>` elements pointing at these files; size them
+  with a height class and the width follows the file's aspect ratio.
 
 Optional, if you have them: `app/apple-icon.png` (180×180, Ink background) and `app/opengraph-image.png`
 (1200×630) are picked up automatically by Next.js when present.

@@ -2,34 +2,50 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /**
- * Placeholder brand mark. Replace by editing this SVG (or swapping in the real
- * geometry from public/brand/mark-chalk.svg). Uses currentColor so it inherits text color.
+ * Brand assets live in public/brand (see public/brand/README.md). The components below render those files
+ * directly, so replacing a file changes the UI with no code edits.
+ *
+ * - mark-chalk.svg / mark-ink.svg / mark-signal.svg: the mark alone (viewBox 778×443)
+ * - wordmark-chalk.svg: mark + outlined "AppPilot" lockup (viewBox 1066×222)
  */
-export function Mark({ className, title = "AppPilot" }: { className?: string; title?: string }) {
+export type MarkVariant = "chalk" | "ink" | "signal";
+
+export function Mark({ variant = "chalk", className, title }: { variant?: MarkVariant; className?: string; title?: string }) {
   return (
-    <svg viewBox="0 0 48 40" fill="currentColor" role="img" aria-label={title} className={cn("block", className)}>
-      <polygon points="0,40 12,40 30,0 18,0" />
-      <polygon points="20,40 48,40 48,14" />
-    </svg>
+    <img
+      src={`/brand/mark-${variant}.svg`}
+      alt={title ?? ""}
+      aria-hidden={title ? undefined : true}
+      draggable={false}
+      className={cn("block h-5 w-auto select-none", className)}
+    />
   );
 }
 
+/** The full lockup (mark + "AppPilot") from public/brand/wordmark-chalk.svg. */
+export function Lockup({ className, title = "AppPilot" }: { className?: string; title?: string }) {
+  return (
+    <img src="/brand/wordmark-chalk.svg" alt={title} draggable={false} className={cn("block h-[22px] w-auto select-none", className)} />
+  );
+}
+
+/** Text wordmark in Geist, for places where the SVG lockup is too small to read. */
 export function Wordmark({ className }: { className?: string }) {
   return <span className={cn("font-semibold tracking-[-0.03em]", className)}>AppPilot</span>;
 }
 
-export function Logo({ className, markClassName, href = "/" }: { className?: string; markClassName?: string; href?: string | null }) {
-  const inner = (
-    <>
-      <Mark className={cn("h-[18px] w-auto text-foreground", markClassName)} />
-      <Wordmark className="text-[17px] leading-none" />
-    </>
-  );
-  const classes = cn("inline-flex items-center gap-2.5 text-foreground", className);
-  if (!href) return <span className={classes}>{inner}</span>;
+export function Logo({ className, href = "/" }: { className?: string; href?: string | null }) {
+  const classes = cn("inline-flex items-center text-foreground", className);
+  if (!href) {
+    return (
+      <span className={classes}>
+        <Lockup />
+      </span>
+    );
+  }
   return (
     <Link href={href} className={classes} aria-label="AppPilot home">
-      {inner}
+      <Lockup />
     </Link>
   );
 }
