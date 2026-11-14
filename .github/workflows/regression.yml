@@ -1,0 +1,36 @@
+# Runs the regression tests AppPilot generated (packages/regression-tests/tests/**) against the demo shop.
+# The shop starts with its seeded bugs turned OFF, so this suite guards the fixes: a red run means a regression.
+name: AppPilot regression tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install and build the demo shop
+        working-directory: apps/demo-shop
+        run: npm ci && npm run build
+      - name: Install regression test runner
+        working-directory: packages/regression-tests
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Run generated regression tests
+        working-directory: packages/regression-tests
+        env:
+          APP_URL: http://localhost:3001
+          APPPILOT_CI_SHOP: "1"   # lets playwright.config.ts start the shop and turn the seeded bugs off
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: packages/regression-tests/results
