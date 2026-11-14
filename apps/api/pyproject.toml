@@ -1,0 +1,41 @@
+[project]
+name = "apppilot"
+version = "0.1.0"
+description = "AppPilot: the autonomous AI QA engineer (engine, agents, API)"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "deepagents>=0.7.38",
+    "fastapi>=0.162.7",
+    "httpx>=0.28.1",
+    "langchain>=1.5.0",
+    "langchain-anthropic>=1.7.10",
+    "langgraph>=1.2.22",
+    "playwright>=1.65.2",
+    "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
+    "sse-starlette>=3.7.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "ruff>=0.17.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apppilot"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"

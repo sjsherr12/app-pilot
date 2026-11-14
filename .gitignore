@@ -1,0 +1,32 @@
+# deps
+node_modules/
+apps/api/.venv/
+.venv/
+
+# builds
+.next/
+out/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# run artifacts
+data/
+
+# playwright
+test-results/
+playwright-report/
+blob-report/
+
+# os
+.DS_Store
+
+# generated test results
+packages/regression-tests/results/

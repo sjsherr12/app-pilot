@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" role="img" aria-hidden="true">
+  <rect width="400" height="300" rx="16" fill="#d9f99d"/>
+  <circle cx="200" cy="130" r="64" fill="#365314" opacity="0.25"/>
+  <text x="200" y="152" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="56" font-weight="700" fill="#365314">CT</text>
+  <text x="200" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#365314" opacity="0.8">Northstar Goods</text>
+</svg>
