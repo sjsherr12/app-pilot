@@ -13,9 +13,10 @@ import inspect
 import logging
 import re
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -38,6 +39,9 @@ log = logging.getLogger(__name__)
 
 SNAPSHOT_JS = Path(__file__).with_name("snapshot.js").read_text()
 VIEWPORT = {"width": 1280, "height": 800}
+# Videos are evidence, not the primary observation channel: half resolution keeps ffmpeg finalization fast.
+VIDEO_SIZE = {"width": 640, "height": 400}
+CLOSE_TIMEOUT_S = 150
 REF_RE = re.compile(r"e\d+")
 
 
@@ -77,11 +81,13 @@ class Session:
     reported_requests: int = 0
     actions: int = 0
     last_elements: dict[str, dict[str, Any]] = field(default_factory=dict)
+    last_elements_before: dict[str, dict[str, Any]] = field(default_factory=dict)
     reset_hook_status: int | None = None
+    inflight: int = 0
 
     @property
     def ref(self) -> str:
-        return f"{self.id}-{self.generation}"
+        return f"{self.id}.g{self.generation}"
 
 
 @dataclass
@@ -121,9 +127,12 @@ class BrowserSessionManager:
         self._pw: Playwright | None = None
         self._browser: Browser | None = None
         self.sessions: dict[str, Session] = {}
+        self.action_logs: dict[str, list[ActionRecord]] = {}
         self._generations: dict[str, int] = {}
         self._shot_seq = 0
         self._lock = asyncio.Lock()
+        self._action_locks: dict[str, asyncio.Lock] = {}
+        self._bg_closes: set[asyncio.Task] = set()
         for sub in ("shots", "video", "traces"):
             (run_dir / sub).mkdir(parents=True, exist_ok=True)
 
@@ -135,17 +144,23 @@ class BrowserSessionManager:
         self._browser = await self._pw.chromium.launch(headless=self.headless)
 
     async def close(self) -> None:
-        for sid in list(self.sessions):
-            try:
-                await self.close_session(sid)
-            except Exception:  # noqa: BLE001
-                log.exception("closing session %s", sid)
+        """Close every session in parallel (video finalization is CPU-bound per context), then the browser."""
+        if self._bg_closes:
+            await asyncio.gather(*list(self._bg_closes), return_exceptions=True)
+        results = await asyncio.gather(*(self.close_session(sid) for sid in list(self.sessions)), return_exceptions=True)
+        for r in results:
+            if isinstance(r, Exception):
+                log.warning("closing session failed: %s", r)
         if self._browser:
             await self._browser.close()
             self._browser = None
         if self._pw:
             await self._pw.stop()
             self._pw = None
+
+    def lock_for(self, session_id: str) -> asyncio.Lock:
+        """Serializes actions within one session (parallel tool calls on one page act on stale refs)."""
+        return self._action_locks.setdefault(session_id, asyncio.Lock())
 
     async def get(self, session_id: str) -> Session:
         async with self._lock:
@@ -165,12 +180,12 @@ class BrowserSessionManager:
         gen = self._generations.get(session_id, 0) + 1
         self._generations[session_id] = gen
         tenant = f"{self.run_id}-{session_id}-{gen}"
-        video_dir = self.run_dir / "video" / f"{session_id}-{gen}"
+        video_dir = self.run_dir / "video" / f"{session_id}.g{gen}"
         video_dir.mkdir(parents=True, exist_ok=True)
         context = await self._browser.new_context(
             viewport=VIEWPORT,
             record_video_dir=str(video_dir),
-            record_video_size=VIEWPORT,
+            record_video_size=VIDEO_SIZE,
             ignore_https_errors=True,
         )
         await context.add_cookies(
@@ -187,6 +202,7 @@ class BrowserSessionManager:
         self._wire(session, page)
         context.on("page", lambda p: self._adopt_page(session, p))
         self.sessions[session_id] = session
+        self.action_logs[session.ref] = session.action_log
         session.reset_hook_status = await self._call_reset_hook(tenant)
         return session
 
@@ -200,23 +216,36 @@ class BrowserSessionManager:
             log.warning("reset hook %s failed: %s", url, e)
             return None
 
+    def close_session_in_background(self, session_id: str) -> None:
+        """Close a session without blocking the caller (used when a subagent's task returns)."""
+        s = self.sessions.pop(session_id, None)
+        if s is None:
+            return
+        task = asyncio.create_task(self._finalize(s), name=f"close-{session_id}")
+        self._bg_closes.add(task)
+        task.add_done_callback(self._bg_closes.discard)
+
     async def close_session(self, session_id: str) -> None:
         s = self.sessions.pop(session_id, None)
         if s is None:
             return
+        await self._finalize(s)
+
+    async def _finalize(self, s: Session) -> None:
+        """Stop tracing, close the context, move the video into place, and attach evidence to findings."""
         trace_rel: str | None = None
         if s.tracing:
             try:
                 path = self.run_dir / "traces" / f"{s.ref}.zip"
-                await s.context.tracing.stop(path=str(path))
+                await asyncio.wait_for(s.context.tracing.stop(path=str(path)), timeout=CLOSE_TIMEOUT_S)
                 trace_rel = f"traces/{s.ref}.zip"
-            except Exception:  # noqa: BLE001
-                log.exception("tracing.stop failed")
+            except Exception as e:
+                log.warning("tracing.stop failed for %s: %s", s.ref, e)
         videos = [p.video for p in s.context.pages if p.video]
         try:
-            await s.context.close()
-        except Exception:  # noqa: BLE001
-            log.exception("context.close failed")
+            await asyncio.wait_for(s.context.close(), timeout=CLOSE_TIMEOUT_S)
+        except Exception as e:
+            log.warning("context.close failed for %s: %s", s.ref, e)
         video_rel: str | None = None
         for v in videos:
             try:
@@ -225,11 +254,22 @@ class BrowserSessionManager:
                     dest = self.run_dir / "video" / f"{s.ref}.webm"
                     p.replace(dest)
                     video_rel = f"video/{s.ref}.webm"
-            except Exception:  # noqa: BLE001
+            except Exception:
                 log.exception("video path failed")
         shutil.rmtree(s.video_dir, ignore_errors=True)
         if self.on_session_closed:
             await _maybe_await(self.on_session_closed(s.ref, video_rel, trace_rel))
+
+    def action_log(self, session_ref: str) -> list[ActionRecord] | None:
+        """Action log for 'verify-2' style refs, or the latest generation for a bare session id."""
+        if session_ref in self.action_logs:
+            return self.action_logs[session_ref]
+        gen = self._generations.get(session_ref)
+        if gen:
+            return self.action_logs.get(f"{session_ref}.g{gen}")
+        # bare prefix such as "explore": latest generation of the newest matching session
+        matches = sorted(k for k in self.action_logs if k.startswith(session_ref))
+        return self.action_logs.get(matches[-1]) if matches else None
 
     # ------------------------------------------------------------------ wiring
     async def _guard(self, route: Route, request: Request) -> None:
@@ -269,9 +309,18 @@ class BrowserSessionManager:
             except Exception:  # noqa: BLE001
                 pass
 
+        def on_request(_req: Request):  # type: ignore[no-untyped-def]
+            session.inflight += 1
+
+        def on_request_done(_req: Request):  # type: ignore[no-untyped-def]
+            session.inflight = max(session.inflight - 1, 0)
+
+        page.on("request", on_request)
+        page.on("requestfinished", on_request_done)
         page.on("console", on_console)
         page.on("pageerror", on_pageerror)
         page.on("requestfailed", on_requestfailed)
+        page.on("requestfailed", on_request_done)
         page.on("response", on_response)
         page.on("dialog", lambda d: asyncio.ensure_future(on_dialog(d)))
 
@@ -301,7 +350,7 @@ class BrowserSessionManager:
         for attempt in range(3):
             try:
                 return await page.evaluate(SNAPSHOT_JS, max_text)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 if attempt == 2:
                     raise
                 log.debug("snapshot eval retry (%s)", e)
@@ -379,15 +428,42 @@ class BrowserSessionManager:
                 "Stop interacting, summarize what you learned, and return."
             )
 
-    async def _settle(self, page: Page) -> None:
+    async def _settle(self, session: Session, *, quiet_ms: int = 400, cap_s: float = 5.0) -> None:
+        """Wait for the page to settle after an action.
+
+        `wait_for_load_state` only covers navigations (it resolves at once when the current document already
+        reached the state), so same-document updates such as server actions or SPA fetches are covered by an
+        in-flight request counter followed by a short DOM-stability check.
+        """
+        page = session.page
         try:
             await page.wait_for_load_state("load", timeout=8000)
         except PWTimeout:
             pass
-        try:
-            await page.wait_for_load_state("networkidle", timeout=2500)
-        except PWTimeout:
-            pass
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + cap_s
+        quiet_since: float | None = None
+        while loop.time() < deadline:
+            if session.inflight <= 0:
+                if quiet_since is None:
+                    quiet_since = loop.time()
+                elif (loop.time() - quiet_since) * 1000 >= quiet_ms:
+                    break
+            else:
+                quiet_since = None
+            await asyncio.sleep(0.05)
+        prev = None
+        for _ in range(8):
+            try:
+                cur = await page.evaluate(
+                    "() => document.body ? document.body.innerText.length + ':' + document.querySelectorAll('*').length : ''"
+                )
+            except Exception:  # noqa: BLE001
+                break
+            if cur == prev:
+                break
+            prev = cur
+            await page.wait_for_timeout(150)
 
     def _locator(self, session: Session, ref: str):
         ref = ref.strip()
@@ -435,7 +511,7 @@ class BrowserSessionManager:
 
     def _remember_elements(self, session: Session) -> None:
         # Keep the element map from before the action so the log describes what was clicked.
-        session.last_elements_before = dict(session.last_elements)  # type: ignore[attr-defined]
+        session.last_elements_before = dict(session.last_elements)
 
     async def navigate(self, session: Session, url: str) -> Snapshot:
         self._check_budget(session)
@@ -445,7 +521,7 @@ class BrowserSessionManager:
         self._remember_elements(session)
         before = session.page.url
         await session.page.goto(target, wait_until="load", timeout=20000)
-        await self._settle(session.page)
+        await self._settle(session)
         snap = await self.snapshot(session, note=f"Navigated to {target}")
         await self._record(session, "navigate", text=target, url_before=before, shot_id=snap.shot_id)
         return snap
@@ -458,7 +534,7 @@ class BrowserSessionManager:
         before = session.page.url
         await loc.scroll_into_view_if_needed(timeout=5000)
         await loc.click(timeout=8000)
-        await self._settle(session.page)
+        await self._settle(session)
         snap = await self.snapshot(session, note=f'Clicked {el.get("role", "element")} "{el.get("name", "")}"')
         await self._record(session, "click", ref=ref, url_before=before, shot_id=snap.shot_id)
         return snap
@@ -470,10 +546,21 @@ class BrowserSessionManager:
         el = session.last_elements.get(ref, {})
         before = session.page.url
         await loc.scroll_into_view_if_needed(timeout=5000)
-        await loc.fill(text, timeout=8000)
+        try:
+            await loc.fill(text, timeout=8000)
+        except Exception as e:  # noqa: BLE001
+            # input[type=number] rejects non-numeric fill(); emulate real typing so the browser's own
+            # validation behavior applies, which is exactly what an edge-case test wants to observe.
+            if "input[type=number]" in str(e) or "Cannot type text" in str(e):
+                await loc.click(timeout=5000)
+                await loc.press("ControlOrMeta+a")
+                await loc.press("Backspace")
+                await loc.press_sequentially(text, timeout=8000)
+            else:
+                raise
         if submit:
             await loc.press("Enter", timeout=5000)
-        await self._settle(session.page)
+        await self._settle(session)
         shown = "(secret)" if el.get("role") == "textbox" and "password" in (el.get("name", "").lower()) else text
         snap = await self.snapshot(
             session, note=f'Typed "{shown}" into {el.get("role", "field")} "{el.get("name", "")}"' + (" and pressed Enter" if submit else "")
@@ -493,7 +580,7 @@ class BrowserSessionManager:
             await loc.select_option(value=value, timeout=5000)
         except Exception:  # noqa: BLE001
             await loc.select_option(label=value, timeout=5000)
-        await self._settle(session.page)
+        await self._settle(session)
         snap = await self.snapshot(session, note=f'Selected "{value}" in "{el.get("name", "")}"')
         await self._record(session, "select", ref=ref, value=value, url_before=before, shot_id=snap.shot_id)
         return snap
@@ -503,7 +590,7 @@ class BrowserSessionManager:
         self._remember_elements(session)
         before = session.page.url
         await session.page.keyboard.press(key)
-        await self._settle(session.page)
+        await self._settle(session)
         snap = await self.snapshot(session, note=f"Pressed {key}")
         await self._record(session, "press", text=key, url_before=before, shot_id=snap.shot_id)
         return snap
@@ -523,7 +610,7 @@ class BrowserSessionManager:
         self._remember_elements(session)
         before = session.page.url
         await session.page.go_back(wait_until="load", timeout=15000)
-        await self._settle(session.page)
+        await self._settle(session)
         snap = await self.snapshot(session, note="Went back")
         await self._record(session, "back", url_before=before, shot_id=snap.shot_id)
         return snap
@@ -533,7 +620,7 @@ class BrowserSessionManager:
         self._remember_elements(session)
         before = session.page.url
         await session.page.reload(wait_until="load", timeout=20000)
-        await self._settle(session.page)
+        await self._settle(session)
         snap = await self.snapshot(session, note="Reloaded the page")
         await self._record(session, "reload", url_before=before, shot_id=snap.shot_id)
         return snap

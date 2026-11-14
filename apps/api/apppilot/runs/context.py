@@ -22,7 +22,7 @@ class RunContext:
     store: RunStore
     bus: RunEventBus
     settings: Settings
-    browser: "BrowserSessionManager"
+    browser: BrowserSessionManager
     cumulative_cost_usd: float = 0.0
     sessions_seen: set[str] = field(default_factory=set)
 

@@ -31,7 +31,7 @@ class Settings:
     default_app_url: str = os.getenv("APP_URL", "http://localhost:3001")
     headless: bool = _bool("APPPILOT_HEADLESS", True)
     max_actions_per_session: int = int(os.getenv("APPPILOT_MAX_ACTIONS", "150"))
-    run_timeout_s: int = int(os.getenv("APPPILOT_RUN_TIMEOUT_S", "1500"))
+    run_timeout_s: int = int(os.getenv("APPPILOT_RUN_TIMEOUT_S", "2400"))
     recursion_limit: int = int(os.getenv("APPPILOT_RECURSION_LIMIT", "500"))
     cors_origins: list[str] = [
         o.strip() for o in os.getenv("APPPILOT_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
