@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: install shop api dash test run reset-bugs status stop
+.PHONY: install shop api dash test run reset-bugs status stop preflight
 
 # Ports used by the local stack
 DASH_PORT ?= 3000
@@ -30,6 +30,11 @@ run:
 
 reset-bugs:
 	curl -s -X POST localhost:3001/__test/bugs -H 'content-type: application/json' -d '{"cart_quantity_total":true,"profile_name_not_persisted":true,"first_order_link_404":true}'; echo
+
+# Demo-day checklist: env keys, tooling, gh auth, the three servers, seeded bug flags, replay run.
+# make preflight DASH_PORT=3002 if the dashboard runs on another port.
+preflight:
+	@DASH_PORT=$(DASH_PORT) scripts/preflight.sh
 
 # Which of the stack's ports have a listener, and which process owns it
 status:

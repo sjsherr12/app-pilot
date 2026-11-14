@@ -76,6 +76,13 @@ make stop                       # stop whatever is listening on those ports
 make dash DASH_PORT=3002        # dashboard on another port
 ```
 
+Before a demo, run the checklist. It checks `.env` keys, tooling, `gh` login for PR export, that
+all three servers answer, that the seeded bugs are switched on, and that the replay run is present:
+
+```bash
+make preflight                  # add DASH_PORT=3002 if the dashboard runs there
+```
+
 Start a run from the dashboard, or with curl:
 
 ```bash
