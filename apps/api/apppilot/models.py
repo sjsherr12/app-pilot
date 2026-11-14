@@ -6,7 +6,7 @@ The dashboard (apps/dashboard) is built against these shapes; keep field names s
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ TestStatus = Literal["passed", "failed", "error", "timeout"]
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def new_id(prefix: str, nhex: int = 6) -> str:
@@ -123,6 +123,10 @@ class TestCase(BaseModel):
     code: str
     last_result: TestResult | None = None
     created_at: str = Field(default_factory=now_iso)
+    # Set by POST /api/tests/{id}/export: the branch the spec was pushed to and the pull request it opened.
+    branch: str | None = None
+    pr_url: str | None = None
+    exported_at: str | None = None
 
 
 class Event(BaseModel):
