@@ -25,7 +25,6 @@ export const BUG_FLAG_NAMES = Object.keys(DEFAULT_BUG_FLAGS) as Array<
 >;
 
 declare global {
-  // eslint-disable-next-line no-var
   var __apxBugs: BugFlags | undefined;
 }
 

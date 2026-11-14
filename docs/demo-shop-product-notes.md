@@ -57,7 +57,7 @@ total, followed by an order summary.
 - The **line total** is always the unit price multiplied by the quantity.
 - The **Subtotal** is the sum of all line totals.
 - **Shipping** is free when the subtotal (before any discount) is $50.00 or more. Below that,
-  shipping is a flat $5.99.
+  shipping is a flat $5.99. The Shipping line in the summary reads "Free" when no charge applies.
 - **Total** = Subtotal − Discount + Shipping.
 - The cart page says "Prices include tax." and states the free-shipping threshold so customers
   can plan their order.

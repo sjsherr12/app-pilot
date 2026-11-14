@@ -66,7 +66,6 @@ export type TenantState = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var __apxStore: Map<string, TenantState> | undefined;
 }
 
