@@ -4,7 +4,7 @@ import { AGENT, ATTEMPT_OUTCOME, FINDING_STATUS, RUN_STATUS, SEVERITY, TEST_STAT
 import { cn } from "@/lib/utils";
 
 const base =
-  "inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium leading-none";
+  "inline-flex h-[22px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium leading-none";
 
 export function Chip({ style, className, icon: Icon, children }: { style: ChipStyle; className?: string; icon?: LucideIcon; children?: React.ReactNode }) {
   return (
@@ -28,7 +28,7 @@ export function RunStatusChip({ status, className }: { status: RunStatus; classN
   const Icon = RUN_ICON[status] ?? CircleDashed;
   return (
     <span className={cn(base, style.className, className)}>
-      <Icon className={cn("size-3", status === "running" && "animate-spin")} />
+      <Icon className={cn("size-3", status === "running" && "animate-spin [animation-duration:1.4s]")} />
       {style.label}
     </span>
   );
@@ -38,7 +38,7 @@ export function FindingStatusChip({ status, className }: { status: string; class
   const style = styleFor(FINDING_STATUS, status);
   return (
     <span className={cn(base, style.className, className)}>
-      <span className={cn("size-1.5 rounded-full", style.dot ?? "bg-zinc-400")} />
+      <span className={cn("size-1.5 rounded-full", style.dot ?? "bg-slate")} />
       {style.label}
     </span>
   );
@@ -46,11 +46,7 @@ export function FindingStatusChip({ status, className }: { status: string; class
 
 export function SeverityBadge({ severity, className }: { severity: Severity; className?: string }) {
   const style = styleFor(SEVERITY, severity);
-  return (
-    <span className={cn(base, "uppercase tracking-wide", style.className, className)}>
-      {style.label}
-    </span>
-  );
+  return <span className={cn(base, "font-mono uppercase tracking-[0.06em]", style.className, className)}>{style.label}</span>;
 }
 
 export function TestStatusChip({ status, className }: { status: TestStatus; className?: string }) {
@@ -65,7 +61,7 @@ export function AgentBadge({ agent, className }: { agent: AgentName | string | n
   const style = styleFor(AGENT, agent ?? "system");
   return (
     <span className={cn(base, "font-mono", style.className, className)}>
-      <span className={cn("size-1.5 rounded-full", style.dot ?? "bg-zinc-400")} />
+      <span className={cn("size-1.5 rounded-full", style.dot ?? "bg-slate")} />
       {agent ?? "system"}
     </span>
   );
