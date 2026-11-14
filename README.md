@@ -62,6 +62,20 @@ make api                        # FastAPI on http://localhost:8000
 make dash                       # dashboard on http://localhost:3000
 ```
 
+Useful while developing:
+
+```bash
+make status                     # which of ports 3000/3001/3002/8000 are in use, and by what
+```
+
+```bash
+make stop                       # stop whatever is listening on those ports
+```
+
+```bash
+make dash DASH_PORT=3002        # dashboard on another port
+```
+
 Start a run from the dashboard, or with curl:
 
 ```bash
