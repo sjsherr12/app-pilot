@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Mini Shop</title></head>
+<body>
+  <h1>Mini Shop</h1>
+  <nav>
+    <a href="/mini_app.html">Shop</a>
+    <a href="/cart.html">Cart (<span id="count">0</span>)</a>
+  </nav>
+  <label for="q">Search</label>
+  <input id="q" type="text" placeholder="Search products">
+  <button id="add" aria-label="Add Widget to cart">Add to cart</button>
+  <p role="status" id="msg"></p>
+  <a href="/missing.html">Broken link</a>
+  <script>
+    document.getElementById('add').onclick = () => {
+      const c = document.getElementById('count');
+      c.textContent = String(Number(c.textContent) + 1);
+      document.getElementById('msg').textContent = 'Added Widget';
+      console.error('boom from mini shop');
+    };
+  </script>
+</body>
+</html>
