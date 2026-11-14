@@ -27,7 +27,7 @@ jobs:
         working-directory: packages/regression-tests
         env:
           APP_URL: http://localhost:3001
-          APPPILOT_CI_SHOP: "1"   # lets playwright.config.ts start the shop and turn the seeded bugs off
+          APPPILOT_CI_SHOP: "1"   # playwright.config.ts starts the shop with APX_BUGS_DEFAULT=off
         run: npx playwright test --pass-with-no-tests
       - uses: actions/upload-artifact@v4
         if: failure()

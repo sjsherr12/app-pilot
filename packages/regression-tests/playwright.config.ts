@@ -19,14 +19,11 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  // In CI (APPPILOT_CI_SHOP=1) start the demo shop and switch its seeded bugs off before the suite runs,
+  // In CI (APPPILOT_CI_SHOP=1) start the demo shop with its seeded bugs switched off (APX_BUGS_DEFAULT=off),
   // so the generated tests act as a regression guard for the fixes. Locally the shop is expected to be running.
   webServer: process.env.APPPILOT_CI_SHOP
     ? {
-        command:
-          "cd ../../apps/demo-shop && (APX_TEST_HOOKS=1 npm run start:prod &) && npx wait-on http://localhost:3001 && " +
-          "curl -s -X POST localhost:3001/__test/bugs -H 'content-type: application/json' " +
-          "-d '{\"cart_quantity_total\":false,\"profile_name_not_persisted\":false,\"first_order_link_404\":false}' && sleep infinity",
+        command: "cd ../../apps/demo-shop && APX_TEST_HOOKS=1 APX_BUGS_DEFAULT=off npm run start:prod",
         url: appUrl,
         reuseExistingServer: true,
         timeout: 120_000,

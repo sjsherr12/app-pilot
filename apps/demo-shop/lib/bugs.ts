@@ -28,9 +28,19 @@ declare global {
   var __apxBugs: BugFlags | undefined;
 }
 
+/**
+ * Initial flags for this process. APX_BUGS_DEFAULT=off starts the server with every seeded bug
+ * fixed, which is how CI turns AppPilot's generated specs into a regression guard.
+ */
+function initialBugFlags(): BugFlags {
+  const off = (process.env.APX_BUGS_DEFAULT ?? "").trim().toLowerCase() === "off";
+  if (!off) return { ...DEFAULT_BUG_FLAGS };
+  return Object.fromEntries(BUG_FLAG_NAMES.map((name) => [name, false])) as BugFlags;
+}
+
 export function getBugFlags(): BugFlags {
   if (!globalThis.__apxBugs) {
-    globalThis.__apxBugs = { ...DEFAULT_BUG_FLAGS };
+    globalThis.__apxBugs = initialBugFlags();
   }
   return globalThis.__apxBugs;
 }

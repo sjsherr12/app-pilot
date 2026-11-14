@@ -77,7 +77,8 @@ Watch it at `http://localhost:3000/runs/<id>`.
 `APX_TEST_HOOKS=1` it exposes `POST /__test/reset?tenant=X` and `GET|POST /__test/bugs`. Three bugs
 are seeded behind runtime flags (cart subtotal ignores quantity at 3+, display name is not persisted,
 the first order's "View order" link 404s) plus one correct-but-surprising decoy (a first-order-only
-coupon). Flip a flag to watch a generated regression test go from failing to passing:
+coupon). Start the shop with `APX_BUGS_DEFAULT=off` to run it with every bug fixed (what CI does), or
+flip a flag at runtime to watch a generated regression test go from failing to passing:
 
 ```bash
 curl -X POST localhost:3001/__test/bugs -H 'content-type: application/json' -d '{"cart_quantity_total": false}'
