@@ -1,0 +1,48 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--directory",
+        "apps/api",
+        "uvicorn",
+        "apppilot.api.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "shop",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/demo-shop && APX_TEST_HOOKS=1 npm run start:prod"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/dashboard && npm run dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "dashboard-live",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/dashboard && NEXT_PUBLIC_MOCK=0 NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev -- -p 3002"
+      ],
+      "port": 3002
+    }
+  ]
+}

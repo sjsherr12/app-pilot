@@ -1,5 +1,5 @@
 SHELL := /bin/zsh
-.PHONY: install shop api dash test
+.PHONY: install shop api dash test run reset-bugs
 
 install:
 	cd apps/api && uv sync && uv run playwright install chromium
@@ -18,3 +18,9 @@ dash:
 
 test:
 	cd apps/api && uv run pytest -q
+
+run:
+	python3 scripts/start-run.py
+
+reset-bugs:
+	curl -s -X POST localhost:3001/__test/bugs -H 'content-type: application/json' -d '{"cart_quantity_total":true,"profile_name_not_persisted":true,"first_order_link_404":true}'; echo
