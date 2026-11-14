@@ -7,16 +7,20 @@ import { TopNav } from "@/components/top-nav";
 const geistSans = Geist({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "AppPilot",
-  description: "Autonomous AI QA engineer: live run dashboard",
+  title: { default: "AppPilot · Ship with proof, not hope.", template: "%s · AppPilot" },
+  description:
+    "Autonomous AI quality assurance for modern software. Explore applications, discover and reproduce bugs, and generate reliable regression tests across web and mobile.",
+  applicationName: "AppPilot",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

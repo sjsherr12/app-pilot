@@ -2,45 +2,56 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radar } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOCK, API_BASE } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/logo";
+
+const NAV = [{ href: "/runs", label: "Runs" }];
 
 export function TopNav() {
   const pathname = usePathname();
+  const onLanding = pathname === "/";
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="mx-auto flex h-12 w-full max-w-[1800px] items-center gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="grid size-7 place-items-center rounded-lg bg-linear-to-br from-sky-400 to-violet-500 text-white shadow-[0_0_24px_-4px_oklch(0.7_0.15_260)]">
-            <Radar className="size-4" />
-          </span>
-          <span>AppPilot</span>
-          <span className="hidden text-xs font-normal text-muted-foreground sm:inline">
-            autonomous QA engineer
-          </span>
-        </Link>
-        <nav className="ml-4 flex items-center gap-1 text-sm">
-          <Link
-            href="/"
-            className={cn(
-              "rounded-md px-2.5 py-1 text-muted-foreground transition-colors hover:text-foreground",
-              pathname === "/" && "bg-muted text-foreground",
-            )}
-          >
-            Runs
-          </Link>
+    <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-sm">
+      <div className="mx-auto flex h-14 w-full max-w-[1800px] items-center gap-8 px-5 sm:px-8">
+        <Logo />
+        <nav className="flex items-center gap-1 text-sm" aria-label="Primary">
+          {NAV.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative rounded-md px-2.5 py-1.5 font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground",
+                  active && "text-foreground",
+                )}
+              >
+                {item.label}
+                {active ? <span className="absolute inset-x-2.5 -bottom-[13px] h-0.5 bg-primary" /> : null}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="ml-auto flex items-center gap-3">
           {MOCK ? (
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-300">
+            <span className="inline-flex h-6 items-center rounded-full border border-warn/40 px-2 font-mono text-[11px] font-medium text-warn">
               Mock data
             </span>
           ) : (
-            <span className="hidden font-mono sm:inline" title="API base">
-              {API_BASE}
+            <span className="eyebrow hidden md:inline" title="API base">
+              {API_BASE.replace(/^https?:\/\//, "")}
             </span>
           )}
+          {onLanding ? (
+            <Button asChild size="sm">
+              <Link href="/runs">
+                Open console <ArrowUpRight />
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </div>
     </header>
