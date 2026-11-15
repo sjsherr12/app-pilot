@@ -48,7 +48,17 @@ cp .env.example .env            # fill in ANTHROPIC_API_KEY (and LANGSMITH_* for
 make install                    # uv sync + Playwright Chromium + npm installs
 ```
 
-Then in three terminals:
+The whole stack in one command (servers run in the background, logs in `.logs/`):
+
+```bash
+make up                         # shop :3001, API :8000, dashboard :3000; waits until all three answer
+```
+
+```bash
+make down                       # stop them
+```
+
+Or, to watch each server's output, in three terminals:
 
 ```bash
 make shop                       # demo shop on http://localhost:3001 (test hooks enabled)
@@ -76,12 +86,16 @@ make stop                       # stop whatever is listening on those ports
 make dash DASH_PORT=3002        # dashboard on another port
 ```
 
-Before a demo, run the checklist. It checks `.env` keys, tooling, `gh` login for PR export, that
-all three servers answer, that the seeded bugs are switched on, and that the replay run is present:
+Between pitches, one command starts anything that is not running, switches every seeded bug back
+on, resets the demo tenant to seed data, and runs the checklist (`.env` keys, tooling, `gh` login for
+PR export, the three servers, the bug flags, the replay run):
 
 ```bash
-make preflight                  # add DASH_PORT=3002 if the dashboard runs there
+make pitch                      # add DASH_PORT=3002 if the dashboard runs there
 ```
+
+The pieces are also available on their own: `make reset` (bugs on, tenant reset), `make preflight`
+(checklist only), `make logs` (tail the background servers).
 
 Start a run from the dashboard, or with curl:
 
