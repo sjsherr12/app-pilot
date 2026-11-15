@@ -72,7 +72,12 @@ class AgentTraceCallback(AsyncCallbackHandler):
                 output_tokens += int(usage.get("output_tokens", 0) or 0)
                 details = usage.get("input_token_details") or {}
                 cache_read += int(details.get("cache_read", 0) or 0)
-                cache_write += int(details.get("cache_creation", 0) or 0)
+                # langchain-anthropic reports writes under the TTL-specific keys (cache_creation stays 0 for
+                # Opus 5.5), so count all three.
+                cache_write += sum(
+                    int(details.get(k, 0) or 0)
+                    for k in ("cache_creation", "ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens")
+                )
                 meta = getattr(msg, "response_metadata", None) or {}
                 model = model or str(meta.get("model") or meta.get("model_name") or "")
         if not (input_tokens or output_tokens):
