@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: install shop api dash test run reset-bugs status stop preflight up wait reset pitch logs down
+.PHONY: install shop api dash test run reset-bugs fix-bugs bugs status stop preflight up wait reset pitch logs down
 
 # Ports used by the local stack
 DASH_PORT ?= 3000
@@ -29,8 +29,15 @@ test:
 run:
 	python3 scripts/start-run.py
 
+# Seeded bug flags on the running shop: reset-bugs (all ON, the demo state), fix-bugs (all OFF, the "fixed" build), bugs (show)
 reset-bugs:
 	curl -s -X POST localhost:3001/__test/bugs -H 'content-type: application/json' -d '{"cart_quantity_total":true,"profile_name_not_persisted":true,"first_order_link_404":true}'; echo
+
+fix-bugs:
+	curl -s -X POST localhost:3001/__test/bugs -H 'content-type: application/json' -d '{"cart_quantity_total":false,"profile_name_not_persisted":false,"first_order_link_404":false}'; echo
+
+bugs:
+	@curl -s localhost:3001/__test/bugs; echo
 
 # Demo-day checklist: env keys, tooling, gh auth, the three servers, seeded bug flags, replay run.
 # make preflight DASH_PORT=3002 if the dashboard runs on another port.
